@@ -43,6 +43,7 @@ export default function AlertQueue() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [filters, setFilters] = useState({ statuses: ['OPEN'], ruleCode: '', dateFrom: '', dateTo: '', minScore: 0 });
   const [modal, setModal] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [dismissReason, setDismissReason] = useState('');
   const [escalateCaseRef, setEscalateCaseRef] = useState('');
   const [escalateMode, setEscalateMode] = useState('new');
@@ -103,6 +104,8 @@ export default function AlertQueue() {
   }
 
   async function handleConfirm() {
+    if (submitting) return;
+    setSubmitting(true);
     const { type, row } = modal;
     try {
       if (type === 'acknowledge') await api.put(`/alerts/${row.id}/acknowledge`);
@@ -113,7 +116,9 @@ export default function AlertQueue() {
       }
       setModal(null);
       fetchFirst();
-    } catch {}
+    } catch {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -163,7 +168,7 @@ export default function AlertQueue() {
           <p className="text-text-muted text-sm">Loading…</p>
         ) : (
           <PaginatedTable
-            columns={COLUMNS((type, row) => { setModal({ type, row }); setDismissReason(''); setEscalateCaseRef(''); setEscalateMode('new'); })}
+            columns={COLUMNS((type, row) => { setModal({ type, row }); setDismissReason(''); setEscalateCaseRef(''); setEscalateMode('new'); setSubmitting(false); })}
             data={alerts}
             hasMore={hasMore}
             onLoadMore={handleLoadMore}
@@ -175,19 +180,19 @@ export default function AlertQueue() {
       </main>
 
       {modal?.type === 'acknowledge' && (
-        <ConfirmModal title="Acknowledge Alert" onConfirm={handleConfirm} onCancel={() => setModal(null)} confirmLabel="Acknowledge">
+        <ConfirmModal title="Acknowledge Alert" onConfirm={handleConfirm} onCancel={() => { setModal(null); setSubmitting(false); }} confirmLabel="Acknowledge" submitting={submitting}>
           <p className="text-text-muted text-sm">Confirm acknowledgement of alert <strong className="text-text-primary">{modal.row.alertRef}</strong>?</p>
         </ConfirmModal>
       )}
       {modal?.type === 'dismiss' && (
-        <ConfirmModal title="Dismiss Alert" onConfirm={handleConfirm} onCancel={() => setModal(null)} confirmLabel="Dismiss" danger>
+        <ConfirmModal title="Dismiss Alert" onConfirm={handleConfirm} onCancel={() => { setModal(null); setSubmitting(false); }} confirmLabel="Dismiss" danger submitting={submitting}>
           <p className="text-text-muted text-sm mb-3">Reason for dismissal <span className="text-risk-high">*</span></p>
           <textarea value={dismissReason} onChange={(e) => setDismissReason(e.target.value)}
             className="w-full bg-card border border-subtle rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent resize-none h-20" placeholder="Enter reason…" />
         </ConfirmModal>
       )}
       {modal?.type === 'escalate' && (
-        <ConfirmModal title="Escalate Alert" onConfirm={handleConfirm} onCancel={() => setModal(null)} confirmLabel="Escalate">
+        <ConfirmModal title="Escalate Alert" onConfirm={handleConfirm} onCancel={() => { setModal(null); setSubmitting(false); }} confirmLabel="Escalate" submitting={submitting}>
           <div className="flex gap-4 mb-4">
             <label className="flex items-center gap-2 text-sm text-text-primary cursor-pointer">
               <input type="radio" checked={escalateMode === 'new'} onChange={() => setEscalateMode('new')} className="accent-accent" /> Create new case

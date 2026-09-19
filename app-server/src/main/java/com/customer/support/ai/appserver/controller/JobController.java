@@ -1,5 +1,6 @@
 package com.customer.support.ai.appserver.controller;
 
+import com.customer.support.ai.appserver.dto.CursorPage;
 import com.customer.support.ai.appserver.dto.JobResponse;
 import com.customer.support.ai.appserver.service.JobService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -35,5 +37,18 @@ public class JobController {
     })
     public JobResponse get(@Parameter(description = "Job id") @PathVariable UUID jobId) {
         return jobService.getById(jobId);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "List ingestion jobs (newest first)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Jobs returned"),
+            @ApiResponse(responseCode = "403", description = "Insufficient role")
+    })
+    public CursorPage<JobResponse> list(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int size) {
+        return jobService.list(cursor, size);
     }
 }

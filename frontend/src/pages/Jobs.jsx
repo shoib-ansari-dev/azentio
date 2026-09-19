@@ -15,6 +15,7 @@ export default function Jobs() {
   const [files, setFiles] = useState({ customers: null, accounts: null, transactions: null });
   const [jobs, setJobs] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const pollRef = useRef(null);
 
   function stopPolling() {
@@ -29,14 +30,28 @@ export default function Jobs() {
       );
       const valid = results.filter(Boolean);
       setJobs((prev) => {
-        const map = Object.fromEntries(prev.map((j) => [j.jobId, j]));
-        valid.forEach((j) => { map[j.jobId] = j; });
+        const map = Object.fromEntries(prev.map((j) => [j.id, j]));
+        valid.forEach((j) => { map[j.id] = j; });
         return Object.values(map);
       });
       const allDone = valid.length > 0 && valid.every((j) => TERMINAL.includes(j.status));
       if (allDone) stopPolling();
     }, 5000);
   }
+
+  useEffect(() => {
+    api.get('/jobs')
+      .then(({ data }) => {
+        const list = data.content || data.items || data;
+        setJobs(Array.isArray(list) ? list : []);
+        const running = (Array.isArray(list) ? list : []).filter((j) => !TERMINAL.includes(j.status)).map((j) => j.id);
+        if (running.length) pollJobs(running);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    return () => stopPolling();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => () => stopPolling(), []);
 
@@ -47,19 +62,19 @@ export default function Jobs() {
       const uploads = [];
       if (files.customers) {
         const fd = new FormData(); fd.append('file', files.customers);
-        uploads.push(api.post('/customers/bulk', fd).then(({ data }) => ({ ...data, type: 'CUSTOMERS' })));
+        uploads.push(api.post('/customers/bulk', fd).then(({ data }) => data));
       }
       if (files.accounts) {
         const fd = new FormData(); fd.append('file', files.accounts);
-        uploads.push(api.post('/accounts/bulk', fd).then(({ data }) => ({ ...data, type: 'ACCOUNTS' })));
+        uploads.push(api.post('/accounts/bulk', fd).then(({ data }) => data));
       }
       if (files.transactions) {
         const fd = new FormData(); fd.append('file', files.transactions);
-        uploads.push(api.post('/transactions/bulk', fd).then(({ data }) => ({ ...data, type: 'TRANSACTIONS' })));
+        uploads.push(api.post('/transactions/bulk', fd).then(({ data }) => data));
       }
       const newJobs = await Promise.all(uploads);
       setJobs((prev) => [...newJobs, ...prev]);
-      pollJobs(newJobs.map((j) => j.jobId));
+      pollJobs(newJobs.map((j) => j.id));
       setFiles({ customers: null, accounts: null, transactions: null });
     } catch {
     } finally {
@@ -110,14 +125,18 @@ export default function Jobs() {
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((job) => (
-                  <tr key={job.jobId} className="border-t border-subtle hover:bg-card/40">
-                    <td className="py-2 pr-4 text-text-primary font-mono text-xs">{job.jobId}</td>
-                    <td className="py-2 pr-4 text-text-primary">{job.type}</td>
+                {loading
+                  ? <tr><td colSpan={9} className="py-8 text-center text-text-muted">Loading…</td></tr>
+                  : !jobs.length
+                    ? <tr><td colSpan={9} className="py-8 text-center text-text-muted">No jobs yet. Upload a CSV to get started.</td></tr>
+                    : jobs.map((job) => (
+                  <tr key={job.id} className="border-t border-subtle hover:bg-card/40">
+                    <td className="py-2 pr-4 text-text-primary font-mono text-xs">{job.id}</td>
+                    <td className="py-2 pr-4 text-text-primary">{job.jobType}</td>
                     <td className="py-2 pr-4">
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${JOB_STATUS_COLORS[job.status] || 'bg-subtle text-text-muted'}`}>{job.status}</span>
                     </td>
-                    <td className="py-2 pr-4 text-text-primary">{job.total ?? '—'}</td>
+                    <td className="py-2 pr-4 text-text-primary">{job.totalRecords ?? '—'}</td>
                     <td className="py-2 pr-4 text-risk-low">{job.processed ?? '—'}</td>
                     <td className="py-2 pr-4 text-risk-high">{job.failed ?? '—'}</td>
                     <td className="py-2 pr-4 text-text-muted">{job.submittedBy || '—'}</td>
@@ -125,7 +144,6 @@ export default function Jobs() {
                     <td className="py-2 pr-4 text-text-muted">{job.completedAt ? new Date(job.completedAt).toLocaleString() : '—'}</td>
                   </tr>
                 ))}
-                {!jobs.length && <tr><td colSpan={9} className="py-8 text-center text-text-muted">No jobs yet. Upload a CSV to get started.</td></tr>}
               </tbody>
             </table>
           </div>
