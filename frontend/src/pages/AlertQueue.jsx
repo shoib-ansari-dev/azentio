@@ -15,7 +15,7 @@ const COLUMNS = (onAction) => [
   { key: 'ruleName', label: 'Rule' },
   { key: 'customerMasked', label: 'Customer' },
   { key: 'accountRef', label: 'Account Ref' },
-  { key: 'amountInr', label: 'Amount (INR)', render: (v) => `₹${Number(v).toLocaleString('en-IN')}` },
+  { key: 'amountInr', label: 'Amount (INR)', render: (v) => v != null ? `₹${Number(v).toLocaleString('en-IN')}` : '—' },
   { key: 'createdAt', label: 'Created At', render: (v) => new Date(v).toLocaleString() },
   { key: 'status', label: 'Status', render: (v) => <StatusChip value={v} type="alert" /> },
   {
@@ -59,19 +59,24 @@ export default function AlertQueue() {
   }, [filters, size]);
 
   // Reset and fetch first page whenever filters or size change
-  const fetchFirst = useCallback(async () => {
+  const fetchFirst = useCallback(() => {
+    const controller = new AbortController();
     setInitialLoading(true);
-    try {
-      const { data } = await api.get('/alerts', { params: buildParams(null) });
-      setAlerts(data.content || data.items || data);
-      setCursor(data.nextCursor ?? null);
-      setHasMore(data.hasMore ?? false);
-    } finally {
-      setInitialLoading(false);
-    }
+    api.get('/alerts', { params: buildParams(null), signal: controller.signal })
+      .then(({ data }) => {
+        setAlerts(data.content || data.items || data);
+        setCursor(data.nextCursor ?? null);
+        setHasMore(data.hasMore ?? false);
+      })
+      .catch(() => {})
+      .finally(() => setInitialLoading(false));
+    return controller;
   }, [buildParams]);
 
-  useEffect(() => { fetchFirst(); }, [fetchFirst]);
+  useEffect(() => {
+    const controller = fetchFirst();
+    return () => controller.abort();
+  }, [fetchFirst]);
 
   async function handleLoadMore() {
     if (!cursor) return;
@@ -103,8 +108,8 @@ export default function AlertQueue() {
       if (type === 'acknowledge') await api.put(`/alerts/${row.id}/acknowledge`);
       if (type === 'dismiss') await api.put(`/alerts/${row.id}/dismiss`, { reason: dismissReason });
       if (type === 'escalate') {
-        if (escalateMode === 'new') await api.post('/cases', { alertId: row.id });
-        else await api.put(`/cases/${escalateCaseRef}/alerts`, { alertId: row.id });
+        const caseId = escalateMode === 'new' ? null : escalateCaseRef || null;
+        await api.put(`/alerts/${row.id}/escalate`, { caseId });
       }
       setModal(null);
       fetchFirst();

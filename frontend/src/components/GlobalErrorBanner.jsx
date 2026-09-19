@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 
-// Simple event bus for axios → banner communication
 const listeners = new Set();
 export function emitError(msg) { listeners.forEach((fn) => fn(msg)); }
 
@@ -12,6 +11,12 @@ export default function GlobalErrorBanner() {
     listeners.add(handler);
     return () => listeners.delete(handler);
   }, []);
+
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 5000);
+    return () => clearTimeout(t);
+  }, [message]);
 
   if (!message) return null;
 

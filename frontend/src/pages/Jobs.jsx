@@ -9,38 +9,36 @@ const JOB_STATUS_COLORS = {
   PENDING: 'bg-gray-500/20 text-gray-400',
 };
 
+const TERMINAL = ['COMPLETED', 'FAILED'];
+
 export default function Jobs() {
   const [files, setFiles] = useState({ customers: null, accounts: null, transactions: null });
   const [jobs, setJobs] = useState([]);
   const [uploading, setUploading] = useState(false);
   const pollRef = useRef(null);
 
-  async function fetchJobs() {
-    try {
-      const { data } = await api.get('/jobs');
-      setJobs(data);
-      return data;
-    } catch {
-      return [];
-    }
+  function stopPolling() {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }
 
-  function startPolling() {
-    if (pollRef.current) return;
+  function pollJobs(jobIds) {
+    stopPolling();
     pollRef.current = setInterval(async () => {
-      const data = await fetchJobs();
-      const allDone = data.every((j) => j.status !== 'RUNNING');
-      if (allDone) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+      const results = await Promise.all(
+        jobIds.map((id) => api.get(`/jobs/${id}`).then(({ data }) => data).catch(() => null))
+      );
+      const valid = results.filter(Boolean);
+      setJobs((prev) => {
+        const map = Object.fromEntries(prev.map((j) => [j.jobId, j]));
+        valid.forEach((j) => { map[j.jobId] = j; });
+        return Object.values(map);
+      });
+      const allDone = valid.length > 0 && valid.every((j) => TERMINAL.includes(j.status));
+      if (allDone) stopPolling();
     }, 5000);
   }
 
-  useEffect(() => {
-    fetchJobs();
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, []);
+  useEffect(() => () => stopPolling(), []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -49,20 +47,21 @@ export default function Jobs() {
       const uploads = [];
       if (files.customers) {
         const fd = new FormData(); fd.append('file', files.customers);
-        uploads.push(api.post('/customers/bulk', fd));
+        uploads.push(api.post('/customers/bulk', fd).then(({ data }) => ({ ...data, type: 'CUSTOMERS' })));
       }
       if (files.accounts) {
         const fd = new FormData(); fd.append('file', files.accounts);
-        uploads.push(api.post('/accounts/bulk', fd));
+        uploads.push(api.post('/accounts/bulk', fd).then(({ data }) => ({ ...data, type: 'ACCOUNTS' })));
       }
       if (files.transactions) {
         const fd = new FormData(); fd.append('file', files.transactions);
-        uploads.push(api.post('/transactions/bulk', fd));
+        uploads.push(api.post('/transactions/bulk', fd).then(({ data }) => ({ ...data, type: 'TRANSACTIONS' })));
       }
-      await Promise.all(uploads);
-      await fetchJobs();
-      startPolling();
+      const newJobs = await Promise.all(uploads);
+      setJobs((prev) => [...newJobs, ...prev]);
+      pollJobs(newJobs.map((j) => j.jobId));
       setFiles({ customers: null, accounts: null, transactions: null });
+    } catch {
     } finally {
       setUploading(false);
     }
@@ -74,7 +73,6 @@ export default function Jobs() {
       <main className="p-6 max-w-5xl mx-auto">
         <h1 className="text-xl font-bold text-text-primary mb-5">Ingestion Jobs</h1>
 
-        {/* Upload section */}
         <div className="bg-surface border border-subtle rounded-xl p-6 mb-6">
           <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-4">Upload CSV Files</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -100,12 +98,8 @@ export default function Jobs() {
           </form>
         </div>
 
-        {/* Jobs table */}
         <div className="bg-surface border border-subtle rounded-xl p-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide">Jobs</h2>
-            <button onClick={fetchJobs} className="text-xs text-accent hover:underline">Refresh</button>
-          </div>
+          <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3">Jobs</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-text-muted text-xs uppercase tracking-wide">
@@ -131,7 +125,7 @@ export default function Jobs() {
                     <td className="py-2 pr-4 text-text-muted">{job.completedAt ? new Date(job.completedAt).toLocaleString() : '—'}</td>
                   </tr>
                 ))}
-                {!jobs.length && <tr><td colSpan={9} className="py-8 text-center text-text-muted">No jobs yet.</td></tr>}
+                {!jobs.length && <tr><td colSpan={9} className="py-8 text-center text-text-muted">No jobs yet. Upload a CSV to get started.</td></tr>}
               </tbody>
             </table>
           </div>

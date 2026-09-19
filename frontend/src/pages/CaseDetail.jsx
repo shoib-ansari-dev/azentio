@@ -21,19 +21,24 @@ export default function CaseDetail() {
 
   const canEdit = role === 'SUPERVISOR' || role === 'ADMIN';
 
-  const fetchCase = useCallback(async () => {
+  const fetchCase = useCallback(() => {
+    const controller = new AbortController();
     setLoading(true);
-    try {
-      const { data } = await api.get(`/cases/${id}`);
-      setCaseData(data);
-      setNotes(data.notes || '');
-      setAssignedTo(data.assignedTo || '');
-    } finally {
-      setLoading(false);
-    }
+    api.get(`/cases/${id}`, { signal: controller.signal })
+      .then(({ data }) => {
+        setCaseData(data);
+        setNotes(data.notes || '');
+        setAssignedTo(data.assignedTo || '');
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    return controller;
   }, [id]);
 
-  useEffect(() => { fetchCase(); }, [fetchCase]);
+  useEffect(() => {
+    const controller = fetchCase();
+    return () => controller.abort();
+  }, [fetchCase]);
 
   async function handleCloseCase() {
     try {

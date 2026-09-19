@@ -15,25 +15,28 @@ export default function AlertDetail() {
   const [escalateMode, setEscalateMode] = useState('new');
   const [caseRef, setCaseRef] = useState('');
 
-  const fetchAlert = useCallback(async () => {
+  const fetchAlert = useCallback(() => {
+    const controller = new AbortController();
     setLoading(true);
-    try {
-      const { data } = await api.get(`/alerts/${id}`);
-      setAlert(data);
-    } finally {
-      setLoading(false);
-    }
+    api.get(`/alerts/${id}`, { signal: controller.signal })
+      .then(({ data }) => setAlert(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    return controller;
   }, [id]);
 
-  useEffect(() => { fetchAlert(); }, [fetchAlert]);
+  useEffect(() => {
+    const controller = fetchAlert();
+    return () => controller.abort();
+  }, [fetchAlert]);
 
   async function handleConfirm() {
     try {
       if (modal === 'acknowledge') await api.put(`/alerts/${id}/acknowledge`);
       if (modal === 'dismiss') await api.put(`/alerts/${id}/dismiss`, { reason: dismissReason });
       if (modal === 'escalate') {
-        if (escalateMode === 'new') await api.post('/cases', { alertId: id });
-        else await api.put(`/cases/${caseRef}/alerts`, { alertId: id });
+        const caseId = escalateMode === 'new' ? null : caseRef || null;
+        await api.put(`/alerts/${id}/escalate`, { caseId });
       }
       setModal(null);
       fetchAlert();

@@ -36,19 +36,24 @@ export default function CaseList() {
     return params;
   }, [filters, size]);
 
-  const fetchFirst = useCallback(async () => {
+  const fetchFirst = useCallback(() => {
+    const controller = new AbortController();
     setInitialLoading(true);
-    try {
-      const { data } = await api.get('/cases', { params: buildParams(null) });
-      setCases(data.content || data.items || data);
-      setCursor(data.nextCursor ?? null);
-      setHasMore(data.hasMore ?? false);
-    } finally {
-      setInitialLoading(false);
-    }
+    api.get('/cases', { params: buildParams(null), signal: controller.signal })
+      .then(({ data }) => {
+        setCases(data.content || data.items || data);
+        setCursor(data.nextCursor ?? null);
+        setHasMore(data.hasMore ?? false);
+      })
+      .catch(() => {})
+      .finally(() => setInitialLoading(false));
+    return controller;
   }, [buildParams]);
 
-  useEffect(() => { fetchFirst(); }, [fetchFirst]);
+  useEffect(() => {
+    const controller = fetchFirst();
+    return () => controller.abort();
+  }, [fetchFirst]);
 
   async function handleLoadMore() {
     if (!cursor) return;
