@@ -9,10 +9,19 @@ import ConfirmModal from '../components/ConfirmModal';
 
 const STATUS_OPTIONS = ['OPEN', 'ACKNOWLEDGED', 'DISMISSED', 'ESCALATED'];
 
+const RULE_LABELS = {
+  CTR_THRESHOLD: 'Cash Transaction Threshold',
+  STRUCTURING: 'Structuring',
+  RAPID_MOVEMENT: 'Rapid Movement of Funds',
+  HIGH_RISK_JURISDICTION: 'High-Risk Jurisdiction',
+  BEHAVIORAL_DEVIATION: 'Behavioral Deviation',
+  ROUND_NUMBER: 'Round-Number Transactions',
+};
+
 const COLUMNS = (onAction) => [
   { key: 'riskScore', label: 'Risk Score', render: (v) => <RiskScoreBadge score={v} /> },
   { key: 'alertRef', label: 'Alert Ref', render: (v, row) => <Link to={`/alerts/${row.id}`} className="text-accent hover:underline">{v}</Link> },
-  { key: 'ruleName', label: 'Rule' },
+  { key: 'ruleCode', label: 'Rule', render: (v) => RULE_LABELS[v] ?? v },
   { key: 'customerMasked', label: 'Customer' },
   { key: 'accountRef', label: 'Account Ref' },
   { key: 'amountInr', label: 'Amount (INR)', render: (v) => v != null ? `₹${Number(v).toLocaleString('en-IN')}` : '—' },
@@ -143,9 +152,14 @@ export default function AlertQueue() {
             </div>
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1 uppercase tracking-wide">Rule Code</label>
-            <input value={filters.ruleCode} onChange={(e) => setFilters((f) => ({ ...f, ruleCode: e.target.value }))}
-              className="bg-card border border-subtle rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent w-36" placeholder="All rules" />
+            <label className="block text-xs text-text-muted mb-1 uppercase tracking-wide">Rule</label>
+            <select value={filters.ruleCode} onChange={(e) => setFilters((f) => ({ ...f, ruleCode: e.target.value }))}
+              className="bg-card border border-subtle rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent w-48">
+              <option value="">All rules</option>
+              {Object.entries(RULE_LABELS).map(([code, label]) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs text-text-muted mb-1 uppercase tracking-wide">From</label>

@@ -71,7 +71,7 @@ export default function Rules() {
             <table className="w-full text-sm text-left">
               <thead className="bg-card text-text-muted uppercase text-xs tracking-wide">
                 <tr>
-                  {['Rule Code', 'Name', 'Enabled', 'Parameters', 'Last Updated By', 'At'].map((h) => (
+                  {['Name', 'Enabled', 'Parameters', 'Last Updated By', 'At'].map((h) => (
                     <th key={h} className="px-4 py-3">{h}</th>
                   ))}
                 </tr>
@@ -79,8 +79,7 @@ export default function Rules() {
               <tbody>
                 {rules.map((rule) => (
                   <tr key={rule.id} className="border-t border-subtle hover:bg-card/50 transition-colors">
-                    <td className="px-4 py-3 text-text-primary font-mono text-xs">{rule.ruleCode}</td>
-                    <td className="px-4 py-3 text-text-primary">{rule.name}</td>
+                    <td className="px-4 py-3 text-text-primary font-medium">{rule.name}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => toggleEnabled(rule)}
@@ -93,17 +92,23 @@ export default function Rules() {
                     <td className="px-4 py-3 min-w-48">
                       {editingId === rule.id ? (
                         <div className="flex flex-col gap-2">
-                          {Object.entries(editingParams).map(([key, val]) => (
-                            <div key={key} className="flex items-center gap-2">
-                              <label className="text-xs text-text-muted w-32 shrink-0">{formatLabel(key)}</label>
-                              <input
-                                type="number"
-                                value={val}
-                                onChange={(e) => setEditingParams((p) => ({ ...p, [key]: Number(e.target.value) }))}
-                                className="bg-card border border-accent rounded px-2 py-1 text-sm text-text-primary focus:outline-none w-32"
-                              />
-                            </div>
-                          ))}
+                          {Object.entries(editingParams).map(([key, val]) => {
+                            const isNum = typeof val === 'number';
+                            return (
+                              <div key={key} className="flex items-center gap-2">
+                                <label className="text-xs text-text-muted w-32 shrink-0">{formatLabel(key)}</label>
+                                <input
+                                  type={isNum ? 'number' : 'text'}
+                                  value={val}
+                                  onChange={(e) => setEditingParams((p) => ({
+                                    ...p,
+                                    [key]: isNum ? Number(e.target.value) : e.target.value,
+                                  }))}
+                                  className="bg-card border border-accent rounded px-2 py-1 text-sm text-text-primary focus:outline-none w-32"
+                                />
+                              </div>
+                            );
+                          })}
                           <div className="flex gap-1 mt-1">
                             <button onClick={() => saveParams(rule)} disabled={saving === rule.id} className="px-2 py-0.5 text-xs bg-accent text-white rounded disabled:opacity-50">Save</button>
                             <button onClick={() => setEditingId(null)} className="px-2 py-0.5 text-xs bg-subtle text-text-muted rounded">Cancel</button>
@@ -127,7 +132,7 @@ export default function Rules() {
                     <td className="px-4 py-3 text-text-muted">{rule.updatedAt ? new Date(rule.updatedAt).toLocaleString() : '—'}</td>
                   </tr>
                 ))}
-                {!rules.length && <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted">No rules configured.</td></tr>}
+                {!rules.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-text-muted">No rules configured.</td></tr>}
               </tbody>
             </table>
           </div>

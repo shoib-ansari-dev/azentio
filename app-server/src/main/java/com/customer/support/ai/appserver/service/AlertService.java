@@ -11,8 +11,11 @@ import com.customer.support.ai.appserver.exception.EntityNotFoundException;
 import com.customer.support.ai.appserver.repository.AlertRepository;
 import com.customer.support.ai.appserver.repository.AmlCaseRepository;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,10 +37,20 @@ public class AlertService {
         List<Alert> rows;
         long total;
         if (status != null && !status.isBlank()) {
-            rows = cursorId == null
-                    ? alertRepository.findByStatusOrderByIdDesc(status, limit)
-                    : alertRepository.findByStatusAndIdLessThanOrderByIdDesc(status, cursorId, limit);
-            total = alertRepository.countByStatus(status);
+            Set<String> statuses = Arrays.stream(status.split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
+            if (statuses.size() == 1) {
+                String single = statuses.iterator().next();
+                rows = cursorId == null
+                        ? alertRepository.findByStatusOrderByIdDesc(single, limit)
+                        : alertRepository.findByStatusAndIdLessThanOrderByIdDesc(single, cursorId, limit);
+                total = alertRepository.countByStatus(single);
+            } else {
+                rows = cursorId == null
+                        ? alertRepository.findByStatusInOrderByIdDesc(statuses, limit)
+                        : alertRepository.findByStatusInAndIdLessThanOrderByIdDesc(statuses, cursorId, limit);
+                total = alertRepository.countByStatusIn(statuses);
+            }
         } else {
             rows = cursorId == null
                     ? alertRepository.findByOrderByIdDesc(limit)

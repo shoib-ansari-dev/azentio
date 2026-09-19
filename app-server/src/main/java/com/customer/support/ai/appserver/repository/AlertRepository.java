@@ -1,6 +1,7 @@
 package com.customer.support.ai.appserver.repository;
 
 import com.customer.support.ai.appserver.entity.Alert;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,5 +21,11 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
     List<Alert> findByStatusAndIdLessThanOrderByIdDesc(String status, UUID id, Limit limit);
 
+    List<Alert> findByStatusInOrderByIdDesc(Collection<String> statuses, Limit limit);
+
+    List<Alert> findByStatusInAndIdLessThanOrderByIdDesc(Collection<String> statuses, UUID id, Limit limit);
+
     long countByStatus(String status);
+
+    long countByStatusIn(Collection<String> statuses);
 }
