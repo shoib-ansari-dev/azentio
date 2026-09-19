@@ -24,9 +24,11 @@ export default function Jobs() {
 
   function pollJobs(jobIds) {
     stopPolling();
+    const validIds = jobIds.filter(Boolean);
+    if (!validIds.length) return;
     pollRef.current = setInterval(async () => {
       const results = await Promise.all(
-        jobIds.map((id) => api.get(`/jobs/${id}`).then(({ data }) => data).catch(() => null))
+        validIds.map((id) => api.get(`/jobs/${id}`).then(({ data }) => data).catch(() => null))
       );
       const valid = results.filter(Boolean);
       setJobs((prev) => {
@@ -73,8 +75,9 @@ export default function Jobs() {
         uploads.push(api.post('/transactions/bulk', fd).then(({ data }) => data));
       }
       const newJobs = await Promise.all(uploads);
-      setJobs((prev) => [...newJobs, ...prev]);
-      pollJobs(newJobs.map((j) => j.id));
+      const seedRows = newJobs.map((j) => ({ id: j.jobId, status: j.status ?? 'QUEUED' }));
+      setJobs((prev) => [...seedRows, ...prev]);
+      pollJobs(newJobs.map((j) => j.jobId));
       setFiles({ customers: null, accounts: null, transactions: null });
     } catch {
     } finally {
