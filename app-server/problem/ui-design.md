@@ -1,8 +1,9 @@
 # Sentinel AML — UI Design
 
-Tech: React + TypeScript. Auth-gated. Roles: `ANALYST`, `SUPERVISOR`, `ADMIN`.
+Tech: React + JavaScript. Auth-gated. Roles: `ANALYST`, `SUPERVISOR`, `ADMIN`.
 
 > Backend enforces JWT + RBAC (required by problem statement — RBAC at API layer). UI has a login screen. Seed users for the prototype (username = role, password = role name): `admin`/`admin` (ADMIN), `supervisor`/`supervisor` (SUPERVISOR), `analyst`/`analyst` (ANALYST).
+> **RBAC is hierarchical:** ADMIN ⊇ SUPERVISOR ⊇ ANALYST — a higher role can access everything a lower role can. So admin sees every page; supervisor sees analyst + supervisor pages.
 
 ---
 
@@ -61,6 +62,8 @@ Unauthenticated users are redirected to `/login`. After login, land on `/alerts`
 - Sort: fixed server-side newest-first (`id DESC`); no client-driven column sort on the server query
 - Acknowledge / Dismiss open a small modal for confirmation (dismiss requires reason text)
 - Escalate opens modal: create new case or link to existing case (search by case ref)
+  - Calls `PUT /api/v1/alerts/:id/escalate` with body `{ "caseId": null }` to create a new case, or `{ "caseId": "<uuid>" }` to link an existing one
+  - **There is no `POST /api/v1/cases`.** Cases are created only by escalating an alert.
 
 ---
 
@@ -89,6 +92,8 @@ Layout: two-column.
 ---
 
 ## 3. Case List (`/cases`)
+
+> Cases are **not created from this page**. A case is born when an analyst escalates an alert (`PUT /api/v1/alerts/:id/escalate`). This page only lists and filters existing cases — there is no "New Case" button and no `POST /api/v1/cases` endpoint.
 
 ### Filters
 - Status: `OPEN` | `IN_REVIEW` | `CLOSED` | `REPORTED`
@@ -168,6 +173,7 @@ Table of all rules:
 - Upload section: three file inputs (customers CSV, accounts CSV, transactions CSV) + Submit
   - Calls `POST /api/v1/customers/bulk`, `/accounts/bulk`, `/transactions/bulk`
 - Jobs table: jobId, type, status, total / processed / failed counts, submitted by, started / completed at
+  - **There is no `GET /api/v1/jobs` (list) endpoint.** The client keeps the `jobId`s returned from the bulk POSTs (in React state/context) and polls each via `GET /api/v1/jobs/:jobId`. The table renders from this in-memory list, so it shows jobs from the current session only.
 - Auto-refresh every 5s while any job is `RUNNING` (stop polling when all terminal)
 
 ---
@@ -190,14 +196,16 @@ Table of all rules:
 | Page | API calls |
 |------|-----------|
 | Login | `POST /auth/login` |
-| Alert Queue | `GET /alerts` |
-| Alert Detail | `GET /alerts/:id` |
-| Case List | `GET /cases` |
+| Alert Queue | `GET /alerts`; actions: `PUT /alerts/:id/acknowledge`, `PUT /alerts/:id/dismiss`, `PUT /alerts/:id/escalate` |
+| Alert Detail | `GET /alerts/:id`; same three actions as Alert Queue |
+| Case List | `GET /cases` (no create endpoint — cases come from escalate) |
 | Case Detail | `GET /cases/:id` |
 | Customer Detail | `GET /customers/:id` |
 | Account Detail | `GET /accounts/:id` → `GET /accounts/:id/transactions` |
 | Rules | `GET /rules`, `PUT /rules/:id` |
 | Jobs | `GET /jobs/:jobId` (poll), bulk POSTs |
+
+> **Available but no dedicated page:** `GET /api/v1/exchange-rates` (ANALYST) and `PUT /api/v1/exchange-rates/:currency` (ADMIN) exist on the backend. No screen is specified for them yet — add one only if the design calls for it.
 
 ---
 
