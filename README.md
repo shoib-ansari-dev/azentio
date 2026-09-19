@@ -38,10 +38,32 @@ A full-stack Anti-Money Laundering (AML) platform built for MeridianTrust Bank. 
 
 ```
 azentio/
-├── app-server/          — Spring Boot backend
-│   └── problem/         — Requirements, data model, API design docs
-└── frontend/            — React frontend
-    └── problem-design/  — UI context and design specs
+├── app-server/                        — Spring Boot backend (Maven)
+│   ├── problem/                       — Requirements, data model, API design docs
+│   ├── src/main/java/.../appserver/
+│   │   ├── AppServerApplication.java  — Application entry point
+│   │   ├── config/                    — Thread pool, OpenAPI, app config beans
+│   │   ├── controller/                — REST controllers
+│   │   ├── detection/                 — DetectionEngine + rules/ (rule implementations)
+│   │   ├── dto/                       — Request/response DTOs & projections
+│   │   ├── entity/                    — JPA entities
+│   │   ├── exception/                 — GlobalExceptionHandler
+│   │   ├── repository/                — Spring Data JPA repositories
+│   │   ├── security/                  — JWT filter, role hierarchy
+│   │   └── service/                   — Business services (ingestion, detection, alert, audit…)
+│   ├── src/main/resources/
+│   │   ├── application.yaml           — App + datasource configuration
+│   │   └── db/migration/              — Flyway migrations (V1…V12)
+│   └── src/test/java/.../appserver/   — Unit tests (detection rules, security)
+├── frontend/                          — React frontend (create-react-app)
+│   ├── problem-design/                — UI context and design specs
+│   └── src/
+│       ├── api/                       — axios instance + interceptors
+│       ├── components/                — Shared components (Navbar, ConfirmModal, …)
+│       ├── context/                   — AuthContext (JWT in memory)
+│       └── pages/                     — Route pages (Alerts, Cases, Jobs, …)
+├── SOLUTION.md                        — Solution/approach write-up
+└── README.md
 ```
 
 ---
@@ -86,7 +108,7 @@ azentio/
    mvn spring-boot:run
    ```
 
-4. Flyway applies migrations automatically on startup. Seed data is included in `V10__seed_detection_rules.sql` and `V11__seed_exchange_rates.sql`.
+4. Flyway applies migrations automatically on startup. Seed data is included in `V11__seed_detection_rules.sql` and `V12__seed_exchange_rates.sql`.
 
 5. Swagger UI: `http://localhost:8080/swagger-ui.html`
 
@@ -95,17 +117,18 @@ azentio/
 Flyway migration order:
 
 ```
-V1__create_customers.sql
-V2__create_accounts.sql
-V3__create_transactions.sql
-V4__create_detection_rules.sql
-V5__create_alerts.sql
+V1__init.sql
+V2__create_customers.sql
+V3__create_accounts.sql
+V4__create_transactions.sql
+V5__create_detection_rules.sql
 V6__create_cases.sql
-V7__create_audit_log.sql
-V8__create_exchange_rates.sql
-V9__create_ingestion_jobs.sql
-V10__seed_detection_rules.sql
-V11__seed_exchange_rates.sql
+V7__create_alerts.sql
+V8__create_audit_log.sql
+V9__create_exchange_rates.sql
+V10__create_ingestion_jobs.sql
+V11__seed_detection_rules.sql
+V12__seed_exchange_rates.sql
 ```
 
 Entity relationships:
