@@ -1,0 +1,56 @@
+server:
+  port: 8099
+
+spring:
+  application:
+    name: sentinel-aml
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/appserver}
+    username: ${DB_USERNAME:appuser}
+    password: ${DB_PASSWORD:apppassword}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+sentinel:
+  jwt:
+    secret: ${JWT_SECRET:changeme-use-env-var-in-prod-this-default-key-is-long-enough-for-hs256}
+    expiry-ms: 86400000   # 24h
+  thread-pool:
+    ingestion:
+      core: 4
+      max: 16
+      queue-capacity: 10000
+    detection:
+      core: 8
+      max: 32
+      queue-capacity: 50000
+    audit:
+      core: 2
+      max: 4
+      queue-capacity: 20000
+  base-currency: INR
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
