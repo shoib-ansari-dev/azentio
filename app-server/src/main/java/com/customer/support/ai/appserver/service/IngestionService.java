@@ -86,6 +86,6 @@ public class IngestionService {
         return new AlertResponse(a.getId(), a.getAlertRef(), a.getAccountId(), a.getCustomerId(),
                 a.getRuleCode(), a.getStatus(), a.getRiskScore(), a.getExplanation(),
                 a.getEvidenceTxnIds(), a.getDispositionReason(), a.getAssignedTo(),
-                a.getCaseId(), a.getCreatedAt(), a.getUpdatedAt());
+                a.getCaseId(), a.getCreatedAt(), a.getUpdatedAt(), null, null);
     }
 }

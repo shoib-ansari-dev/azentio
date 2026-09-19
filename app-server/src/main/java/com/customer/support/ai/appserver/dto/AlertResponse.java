@@ -18,5 +18,7 @@ public record AlertResponse(
         String assignedTo,
         UUID caseId,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt) {
+        OffsetDateTime updatedAt,
+        String customerMasked,
+        String accountRef) {
 }

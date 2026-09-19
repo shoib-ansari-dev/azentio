@@ -8,8 +8,10 @@ import com.customer.support.ai.appserver.dto.CursorSupport;
 import com.customer.support.ai.appserver.entity.Alert;
 import com.customer.support.ai.appserver.entity.AmlCase;
 import com.customer.support.ai.appserver.exception.EntityNotFoundException;
+import com.customer.support.ai.appserver.repository.AccountRepository;
 import com.customer.support.ai.appserver.repository.AlertRepository;
 import com.customer.support.ai.appserver.repository.AmlCaseRepository;
+import com.customer.support.ai.appserver.repository.CustomerRepository;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -25,10 +27,15 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final AmlCaseRepository caseRepository;
+    private final CustomerRepository customerRepository;
+    private final AccountRepository accountRepository;
 
-    public AlertService(AlertRepository alertRepository, AmlCaseRepository caseRepository) {
+    public AlertService(AlertRepository alertRepository, AmlCaseRepository caseRepository,
+                        CustomerRepository customerRepository, AccountRepository accountRepository) {
         this.alertRepository = alertRepository;
         this.caseRepository = caseRepository;
+        this.customerRepository = customerRepository;
+        this.accountRepository = accountRepository;
     }
 
     public CursorPage<AlertResponse> list(String status, String cursor, int size) {
@@ -57,7 +64,7 @@ public class AlertService {
                     : alertRepository.findByIdLessThanOrderByIdDesc(cursorId, limit);
             total = alertRepository.count();
         }
-        return CursorSupport.build(rows, size, total, Alert::getId, AlertService::toResponse);
+        return CursorSupport.build(rows, size, total, Alert::getId, this::toResponse);
     }
 
     public AlertResponse getById(UUID id) {
@@ -127,10 +134,16 @@ public class AlertService {
                 .orElseThrow(() -> new EntityNotFoundException("Alert not found"));
     }
 
-    static AlertResponse toResponse(Alert a) {
+    AlertResponse toResponse(Alert a) {
+        String customerMasked = customerRepository.findById(a.getCustomerId())
+                .map(c -> "****" + c.getLastName())
+                .orElse(null);
+        String accountRef = accountRepository.findById(a.getAccountId())
+                .map(acc -> acc.getAccountRef())
+                .orElse(null);
         return new AlertResponse(a.getId(), a.getAlertRef(), a.getAccountId(), a.getCustomerId(),
                 a.getRuleCode(), a.getStatus(), a.getRiskScore(), a.getExplanation(),
                 a.getEvidenceTxnIds(), a.getDispositionReason(), a.getAssignedTo(),
-                a.getCaseId(), a.getCreatedAt(), a.getUpdatedAt());
+                a.getCaseId(), a.getCreatedAt(), a.getUpdatedAt(), customerMasked, accountRef);
     }
 }

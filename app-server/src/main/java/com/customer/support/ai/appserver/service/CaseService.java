@@ -23,10 +23,12 @@ public class CaseService {
 
     private final AmlCaseRepository caseRepository;
     private final AlertRepository alertRepository;
+    private final AlertService alertService;
 
-    public CaseService(AmlCaseRepository caseRepository, AlertRepository alertRepository) {
+    public CaseService(AmlCaseRepository caseRepository, AlertRepository alertRepository, AlertService alertService) {
         this.caseRepository = caseRepository;
         this.alertRepository = alertRepository;
+        this.alertService = alertService;
     }
 
     public CursorPage<CaseResponse> list(String cursor, int size) {
@@ -41,7 +43,7 @@ public class CaseService {
     public CaseDetailResponse getById(UUID id) {
         AmlCase amlCase = findOrThrow(id);
         List<AlertResponse> alerts = alertRepository.findByCaseId(id).stream()
-                .map(AlertService::toResponse).toList();
+                .map(alertService::toResponse).toList();
         return new CaseDetailResponse(toResponse(amlCase), alerts);
     }
 
